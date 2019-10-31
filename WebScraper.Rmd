@@ -2,7 +2,8 @@
 title: "WebScraper"
 author: "Madeline Hoshko"
 date: "October 24, 2019"
-output: html_document
+output:
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -15,11 +16,21 @@ pkgs = c("rvest", "magrittr", "httr", "stringr", "dplyr", "tidyr")
   }
 ```
 
-My read_class_schedule function takes in a given url to then read the html to scrape for information on the class subject, class number, section number, class title, instructor, and enrollment total. It then returns a tibble of the attributes. 
+
+
+My read_class_schedule function takes in a given url to then read the html to scrape for information on the class subject, class number, section number, class title, instructor, enrollment total, semester, and year. Semester and year are found by grabbing the class subjpagessubjheader to then extract the string holding the semester or year with a regular expression. It then returns a tibble of the attributes. 
 
 ```{r}
 read_class_schedule <- function(url){
   webpage = read_html(url)
+  semester <- webpage %>%
+    html_nodes(".subjpagessubjheader") %>%
+    html_text() %>%
+    str_extract("Spring|Fall|Winter|Summer") 
+  year <- webpage %>%
+    html_nodes(".subjpagessubjheader") %>%
+    html_text() %>%
+    str_extract("20\\d\\d")
   subject <- webpage %>%
     html_nodes("td.subj") %>%
     html_text()
@@ -39,20 +50,26 @@ read_class_schedule <- function(url){
     html_nodes("td.enrtot") %>%
     html_text()
 
-  tib <- tibble(subject=subject, class_number=class_number, section_number=section_number, class_title=class_title, instructor=instructor, enrollment_total=enrollment_total)
+  tib <- tibble(subject=subject, class_number=class_number, section_number=section_number, class_title=class_title, instructor=instructor, enrollment_total=enrollment_total, semester=semester, year=year)
   return(tib)
 }
 
 ```
 
 
-I now call read_class_schedule for the Spring 2019 Math and Computer Science catalogs as well as the Spring 2020 Math and Computer Science catalogs. With the result, I use rbind to join together all four tibbles into one. Since they have the same attributes I am able to use rbind to append the tibbles to each other vertically. 
+I now call read_class_schedule for the Spring 2019 Math and Computer Science catalogs as well as the Spring 2020 Math and Computer Science catalogs. With the result, I use rbind to join together all four tibbles into one. Since they have the same attributes I am able to use rbind to append the tibbles to each other vertically. To see the accurate years and semester in the view I include dna extra call to print these out separately for two of the webpages.
 ```{r}
+
 (CS2019 <- read_class_schedule("http://ems.csuchico.edu/APSS/schedule/spr2019/CSCI.shtml"))
+(head(CS2019$semester))
+(head(CS2019$year))
 (CS2020 <- read_class_schedule("http://ems.csuchico.edu/APSS/schedule/spr2020/CSCI.shtml"))
+(head(CS2020$semester))
+(head(CS2020$year))
 (MATH2019 <- read_class_schedule("http://ems.csuchico.edu/APSS/schedule/spr2019/MATH.shtml"))
 (MATH2020 <- read_class_schedule("http://ems.csuchico.edu/APSS/schedule/spr2020/MATH.shtml"))
 (composite <- rbind(CS2019, CS2020, MATH2019, MATH2020))
+
 
 ```
 
